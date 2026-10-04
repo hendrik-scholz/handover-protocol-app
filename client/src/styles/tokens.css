@@ -1,0 +1,28 @@
+:root {
+  --bg: #0d1520;
+  --card: #1a2538;
+  --card-raised: #223048;
+  --border: #2a3a55;
+  --text: #f3f5f8;
+  --muted: #9aa8bf;
+  --primary: #2457e6;
+  --primary-text: #ffffff;
+  --success: #4cc38a;
+  --warn-bg: #3a2a17;
+  --warn-border: #6b4a22;
+  --warn-text: #f0a04b;
+  --ok-bg: #12301f;
+  --ok-border: #1f5a39;
+  --danger: #ef5350;
+  --damage-badge: #d4501a;
+  --sev-minor-bg: #1f3a73;
+  --sev-minor-text: #a9c3ff;
+  --sev-moderate-bg: #5a3412;
+  --sev-moderate-text: #ffbf80;
+  --sev-severe-bg: #5c1f1f;
+  --sev-severe-text: #ffb0ad;
+  --radius: 16px;
+  --radius-lg: 24px;
+  --gutter: 16px;
+  color-scheme: dark;
+}
