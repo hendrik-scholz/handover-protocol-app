@@ -32,6 +32,10 @@ export const copy = {
   notChecked: (slots: string) => `${slots} not yet checked`,
   photos: 'Photos',
   damages: 'Damages',
+  removeDamage: 'Remove',
+  removeDamageAria: (n: number) => `Remove damage ${n}`,
+  removeConfirm: 'Remove this damage from the protocol?',
+  keepDamage: 'Keep',
   addSlot: (label: string) => `Add ${label.toLowerCase()}`,
   notCaptured: 'Not captured',
   photoOf: (label: string) => `Photo: ${label}`,
@@ -43,6 +47,8 @@ export const copy = {
   clear: 'Clear',
   confirmSign: 'Confirm and sign',
   signed: 'Protocol signed',
+  exportPdf: 'Export as PDF',
+  exporting: 'Creating PDF…',
   disclaimer: 'Damages are suggested from photos. Review before signing.',
   errors: {
     network: 'Could not reach the server. Check your connection and try again.',
@@ -52,6 +58,8 @@ export const copy = {
     upstream_error: 'The analysis service failed. Please try again.',
     upstream_auth: 'The analysis service is not configured correctly.',
     invalid_image: 'One of the photos could not be read. Retake it and try again.',
+    invalid_signature: 'A signature could not be read. Clear it, sign again and retry.',
+    export: 'The PDF could not be created. Please try again.',
     generic: 'Something went wrong. Please try again.',
   } as Record<string, string>,
 };
@@ -61,7 +69,6 @@ export const SLOT_LABELS: Record<Slot, string> = {
   left: 'Left side',
   rear: 'Rear',
   right: 'Right side',
-  interior: 'Interior',
   dashboard: 'Dashboard',
 };
 
@@ -70,6 +77,5 @@ export const SLOT_TIPS: Record<Slot, string> = {
   left: 'Stand about 3 m away and fit the whole side inside the outline.',
   rear: 'Stand about 3 m away and fit the whole rear inside the outline.',
   right: 'Stand about 3 m away and fit the whole side inside the outline.',
-  interior: 'Capture the seats and cabin from the open door.',
   dashboard: 'Capture the dashboard with the odometer readable.',
 };

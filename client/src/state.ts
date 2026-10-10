@@ -1,4 +1,4 @@
-export const SLOTS = ['front', 'left', 'rear', 'right', 'interior', 'dashboard'] as const;
+export const SLOTS = ['front', 'left', 'rear', 'right', 'dashboard'] as const;
 export type Slot = (typeof SLOTS)[number];
 export type Severity = 'minor' | 'moderate' | 'severe';
 
@@ -45,6 +45,7 @@ export type Action =
   | { type: 'setPlate'; value: string }
   | { type: 'setMileage'; value: string }
   | { type: 'setRemarks'; value: string }
+  | { type: 'removeDamage'; id: number }
   | { type: 'analyzeStart' }
   | { type: 'analyzeSuccess'; protocol: Protocol }
   | { type: 'analyzeError'; message: string }
@@ -71,6 +72,14 @@ export const nextEmptySlot = (photos: Photos, from?: Slot): Slot => {
 };
 export const damagesBySlot = (damages: Damage[], slot: Slot) => damages.filter((d) => d.slot === slot);
 
+// Damages are renumbered 1..n so photo badges and the list always match.
+export function withoutDamage(protocol: Protocol, id: number): Protocol {
+  const damages = protocol.damages.filter((d) => d.id !== id).map((d, i) => ({ ...d, id: i + 1 }));
+  const summary = { total: damages.length, minor: 0, moderate: 0, severe: 0 };
+  for (const d of damages) summary[d.severity] += 1;
+  return { ...protocol, damages, summary };
+}
+
 export function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'setPhoto': {
@@ -85,6 +94,8 @@ export function reducer(state: State, action: Action): State {
       return { ...state, mileage: action.value };
     case 'setRemarks':
       return { ...state, remarks: action.value };
+    case 'removeDamage':
+      return state.protocol ? { ...state, protocol: withoutDamage(state.protocol, action.id) } : state;
     case 'analyzeStart':
       return { ...state, analysis: { status: 'loading' } };
     case 'analyzeSuccess':

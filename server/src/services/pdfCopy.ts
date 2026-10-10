@@ -1,0 +1,38 @@
+import type { Slot } from '../schemas.js';
+
+/** English strings for the exported PDF; mirrors the relevant parts of client/src/copy.ts. */
+export const pdfCopy = {
+  title: 'Handover Protocol',
+  protocolId: 'Protocol ID',
+  draftFrom: (n: number) => `Draft from ${n} photo${n === 1 ? '' : 's'}`,
+  created: (date: string) => `Created ${date}`,
+  plate: 'Plate',
+  vehicle: 'Vehicle',
+  date: 'Date',
+  mileage: 'Mileage',
+  noDamages: 'No damages detected',
+  damagesDetected: (n: number) => `${n} damage${n === 1 ? '' : 's'} detected`,
+  notChecked: (slots: string) => `${slots} not yet checked`,
+  damages: 'Damages',
+  evidence: 'Evidence',
+  damage: 'Damage',
+  severity: 'Severity',
+  photoOf: (label: string) => `Photo: ${label}`,
+  coverage: (slots: string) => `Not covered yet: ${slots}. Add photos to complete the protocol.`,
+  photos: 'Photos',
+  damageMarked: (ids: number[]) => `Damage ${ids.join(', ')} marked`,
+  notCaptured: 'Not captured',
+  remarks: 'Remarks',
+  handedOverBy: 'Handed over by · signature',
+  receivedBy: 'Received by · signature',
+  disclaimer: 'Damages are suggested from photos. Review before signing.',
+  page: (n: number, total: number) => `Page ${n} of ${total}`,
+  severityLabel: { minor: 'Minor', moderate: 'Moderate', severe: 'Severe' },
+  slotLabels: {
+    front: 'Front',
+    left: 'Left side',
+    rear: 'Rear',
+    right: 'Right side',
+    dashboard: 'Dashboard',
+  } satisfies Record<Slot, string>,
+} as const;

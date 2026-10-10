@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { copy, SLOT_LABELS } from '../copy';
 import type { Damage } from '../state';
 
-export function DamageCard({ damage }: { damage: Damage }) {
+export function DamageCard({ damage, onRemove }: { damage: Damage; onRemove?: () => void }) {
+  const [confirming, setConfirming] = useState(false);
   return (
     <article className="card damage">
       <header>
@@ -11,6 +13,21 @@ export function DamageCard({ damage }: { damage: Damage }) {
       </header>
       <p className="muted small">{damage.location} · {copy.photoOf(SLOT_LABELS[damage.slot])}</p>
       <p>{damage.description}</p>
+      {onRemove && (
+        <div className="actions">
+          {confirming ? (
+            <>
+              <span>{copy.removeConfirm}</span>
+              <button type="button" onClick={() => setConfirming(false)}>{copy.keepDamage}</button>
+              <button type="button" className="danger" onClick={onRemove}>{copy.removeDamage}</button>
+            </>
+          ) : (
+            <button type="button" aria-label={copy.removeDamageAria(damage.id)} onClick={() => setConfirming(true)}>
+              {copy.removeDamage}
+            </button>
+          )}
+        </div>
+      )}
     </article>
   );
 }

@@ -1,10 +1,14 @@
 import { useEffect, useRef } from 'react';
 import { copy } from '../copy';
 
-export function SignaturePad({ label, locked, onChange }: { label: string; locked: boolean; onChange: (hasInk: boolean) => void }) {
+export type SignatureGetter = () => Promise<Blob | null>;
+
+export function SignaturePad({ label, locked, onChange }: { label: string; locked: boolean; onChange: (hasInk: boolean, getPng: SignatureGetter) => void }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const inked = useRef(false);
+  const getPng: SignatureGetter = () =>
+    new Promise((resolve) => (ref.current ? ref.current.toBlob((b) => resolve(b), 'image/png') : resolve(null)));
 
   useEffect(() => {
     const c = ref.current!;
@@ -37,14 +41,14 @@ export function SignaturePad({ label, locked, onChange }: { label: string; locke
     const ctx = ref.current!.getContext('2d');
     ctx?.lineTo(...pos(e));
     ctx?.stroke();
-    if (!inked.current) { inked.current = true; onChange(true); }
+    if (!inked.current) { inked.current = true; onChange(true, getPng); }
   };
   const up = () => { drawing.current = false; };
   const clear = () => {
     const c = ref.current!;
     c.getContext('2d')?.clearRect(0, 0, c.width, c.height);
     inked.current = false;
-    onChange(false);
+    onChange(false, getPng);
   };
 
   return (

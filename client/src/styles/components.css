@@ -55,6 +55,10 @@
 .damage header { display: flex; align-items: center; gap: 10px; }
 .damage h3 { margin: 0; flex: 1; font-size: 1rem; }
 .damage p { margin: 6px 0 0; }
+.damage .actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+.damage .actions span { flex: 1; font-size: 0.9rem; }
+.damage .actions button { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--text); min-height: 40px; }
+.damage .actions .danger { border-color: var(--damage-badge); color: var(--damage-badge); }
 .small { font-size: 0.85rem; }
 .center { text-align: center; }
 .sev { padding: 3px 12px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; text-transform: capitalize; }

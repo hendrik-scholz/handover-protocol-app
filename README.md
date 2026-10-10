@@ -2,21 +2,22 @@
 
 A mobile-first web app that creates a vehicle handover protocol from photos. Take or upload photos of a vehicle, and a vision model suggests the damages and reads the license plate and odometer. You review the draft, add remarks, and sign on screen.
 
-This is an MVP. It is stateless: there is no database, no file storage, and no PDF export.
+This is an MVP. It is stateless: there is no database and no file storage. The PDF is rendered on demand and never stored.
 
 ## How it works
 
-1. **Capture:** take or upload photos for up to six slots: front, left, rear, right, interior, dashboard. You can analyze with any subset.
+1. **Capture:** take or upload photos for up to five slots: front, left, rear, right, dashboard. You can analyze with any subset.
 2. **Analyze:** the React client sends the photos to the Node backend, which resizes them and asks an OpenAI-compatible vision model for damages, the plate, and the odometer.
 3. **Review:** the draft protocol shows the vehicle data, a damage summary, numbered damage cards, and which slots are still missing. Add the missing photos and analyze again.
+4. **Export:** add remarks and signatures, then export a PDF. The client re-sends the photos, the reviewed damages and the signatures, and the backend renders the PDF in memory.
 4. **Sign:** add remarks and both signatures. "Confirm and sign" only locks the screen locally.
 
 <p>
-  <img src="images/1_step1_rear.png" alt="Step 1: rear photo captured" height="320">
-  <img src="images/2_step1_dashboard.png" alt="Step 1: dashboard photo captured" height="320">
-  <img src="images/3_step2_photos.png" alt="Step 2: photos with damage markers" height="320">
-  <img src="images/4_step2_damages.png" alt="Step 2: detected damages" height="320">
-  <img src="images/5_step2_remarks.png" alt="Step 2: remarks and signatures" height="320">
+  <img src="examples/1_step1_rear.png" alt="Step 1: rear photo captured" height="320">
+  <img src="examples/2_step1_dashboard.png" alt="Step 1: dashboard photo captured" height="320">
+  <img src="examples/3_step2_photos.png" alt="Step 2: photos with damage markers" height="320">
+  <img src="examples/4_step2_damages.png" alt="Step 2: detected damages" height="320">
+  <img src="examples/5_step2_remarks.png" alt="Step 2: remarks and signatures" height="320">
 </p>
 
 Everything the model returns is a suggestion. See [AI_DILIGENCE.md](AI_DILIGENCE.md).
@@ -78,7 +79,8 @@ Sample photos for trying the app: [Pexels profile @ibragraphics](https://www.pex
 ## API
 
 - `GET /api/health`
-- `POST /api/analyze`: multipart/form-data with file fields `front`, `left`, `rear`, `right`, `interior`, `dashboard` (at least one) and optional text fields `plate`, `mileageKm`. Returns the draft protocol as JSON. Errors use `{ "error": { "code", "message" } }`.
+- `POST /api/analyze`: multipart/form-data with file fields `front`, `left`, `rear`, `right`, `dashboard` (at least one) and optional text fields `plate`, `mileageKm`. Returns the draft protocol as JSON. Errors use `{ "error": { "code", "message" } }`.
+- `POST /api/export`: multipart/form-data with the same photo fields (at least one), optional `signatureHanded` / `signatureReceived` PNGs, and text fields `plate`, `mileageKm`, `date`, `remarks` and `damages` (JSON array). Returns the protocol as a PDF attachment.
 
 Quick check without the client:
 
@@ -107,7 +109,7 @@ Contributor and architecture notes are in [CLAUDE.md](CLAUDE.md).
 
 - Damages are not located within the photos, so the badges on photo tiles sit at a fixed spot.
 - Damages cannot be edited or deleted yet.
-- There is no PDF export, persistence, or authentication.
+- There is no persistence or authentication. Exports are rendered per request and not stored.
 - Detection quality has not been measured on real photos.
 
 ## Thank you

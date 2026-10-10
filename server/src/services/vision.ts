@@ -1,6 +1,6 @@
 import type OpenAI from 'openai';
 import { HttpError } from '../middleware/errorHandler.js';
-import { VisionResultSchema, type Slot, type VisionResult } from '../schemas.js';
+import { SLOTS, VisionResultSchema, type Slot, type VisionResult } from '../schemas.js';
 
 export interface SlotImage {
   slot: Slot;
@@ -19,7 +19,7 @@ Rules:
 - "location" is the part plus position, e.g. "Front bumper, lower left".
 - "description" is one or two factual sentences. Do not invent measurements.
 
-Odometer: if the dashboard or interior photo shows the instrument cluster, read the TOTAL odometer (accumulated distance), not the trip meter, and not the fuel gauge, clock or range.
+Odometer: if the dashboard photo shows the instrument cluster, read the TOTAL odometer (accumulated distance), not the trip meter, and not the fuel gauge, clock or range.
 - odometerValue: the integer shown, digits only (ignore decimals and separators). null if no odometer is visible or you cannot read every digit with confidence. Never guess.
 - odometerUnit: "km" or "mi" as shown on the display or its label; null if odometerValue is null or the unit is not visible.
 License plate: if the front or rear photo shows the license plate of the photographed vehicle, return it in plateText exactly as printed (letters, digits, and any separators such as hyphens or spaces; ignore stickers, seals and state/country marks). null if no plate is visible, it is not on the photographed vehicle, or any character is unclear. Never guess.
@@ -45,7 +45,7 @@ const RESPONSE_FORMAT = {
               type: { type: 'string' },
               severity: { type: 'string', enum: ['minor', 'moderate', 'severe'] },
               location: { type: 'string' },
-              slot: { type: 'string', enum: ['front', 'left', 'rear', 'right', 'interior', 'dashboard'] },
+              slot: { type: 'string', enum: [...SLOTS] },
               description: { type: 'string' },
             },
           },

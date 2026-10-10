@@ -18,7 +18,7 @@ describe('App flow', () => {
 
     await user.upload(screen.getByTestId('gallery-input'), [file('a.jpg'), file('b.jpg'), file('c.jpg')]);
     expect(screen.getByRole('button', { name: /analyze 3 photos/i })).toBeEnabled();
-    expect(screen.getByText('3 / 6 photos')).toBeInTheDocument();
+    expect(screen.getByText('3 / 5 photos')).toBeInTheDocument();
   });
 
   it('analyzes and renders the protocol, then returns to capture for a missing slot', async () => {
@@ -33,13 +33,13 @@ describe('App flow', () => {
     expect(screen.getByText(/2 minor · 1 moderate/)).toBeInTheDocument();
     expect(screen.getAllByRole('article')).toHaveLength(3);
     expect(screen.getByText(/Step 2 of 2 · Draft from 3 photos/)).toBeInTheDocument();
-    expect(screen.getByText(/Not covered yet: right side, interior, dashboard/)).toBeInTheDocument();
+    expect(screen.getByText(/Not covered yet: right side, dashboard/)).toBeInTheDocument();
     expect(within(screen.getByAltText('Left side').closest('.tile') as HTMLElement).getByLabelText('Damage 2')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /add right side/i }));
     expect(screen.getByText(/Step 1 of 2/)).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Right', selected: true })).toBeInTheDocument();
-    expect(screen.getByText('3 / 6 photos')).toBeInTheDocument();
+    expect(screen.getByText('3 / 5 photos')).toBeInTheDocument();
   });
 
   it('prefills mileage read from the dashboard photo and flags it for verification', async () => {
@@ -85,5 +85,58 @@ describe('App flow', () => {
     await user.click(screen.getByRole('button', { name: /analyze 1 photo/i }));
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/could not reach the server/i));
     expect(screen.getByRole('button', { name: /try again/i })).toBeEnabled();
+  });
+
+  it('removes a damage after confirmation and keeps badges and summary in sync', async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(protocolFixture))));
+    render(<App />);
+    await user.upload(screen.getByTestId('gallery-input'), [file('a.jpg'), file('b.jpg'), file('c.jpg')]);
+    await user.click(screen.getByRole('button', { name: /analyze 3 photos/i }));
+    await screen.findByText('3 damages detected');
+
+    await user.click(screen.getByRole('button', { name: 'Remove damage 1' }));
+    await user.click(screen.getByRole('button', { name: 'Keep' }));
+    expect(screen.getAllByRole('article')).toHaveLength(3);
+
+    await user.click(screen.getByRole('button', { name: 'Remove damage 1' }));
+    await user.click(screen.getByRole('button', { name: 'Remove' }));
+    expect(screen.getByText('2 damages detected')).toBeInTheDocument();
+    expect(screen.getAllByRole('article')).toHaveLength(2);
+    expect(screen.queryByText('Scratch')).not.toBeInTheDocument();
+    expect(within(screen.getByAltText('Left side').closest('.tile') as HTMLElement).getByLabelText('Damage 1')).toBeInTheDocument();
+  });
+
+  it('exports the protocol as a PDF download', async () => {
+    const user = userEvent.setup();
+    const pdf = new Response('%PDF-', { headers: { 'Content-Disposition': 'attachment; filename="handover-AB-123-2026-10-04.pdf"' } });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(protocolFixture)))
+      .mockResolvedValueOnce(pdf);
+    vi.stubGlobal('fetch', fetchMock);
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    render(<App />);
+    await user.upload(screen.getByTestId('gallery-input'), [file('a.jpg'), file('b.jpg'), file('c.jpg')]);
+    await user.click(screen.getByRole('button', { name: /analyze 3 photos/i }));
+    await screen.findByText('3 damages detected');
+
+    await user.click(screen.getByRole('button', { name: 'Export as PDF' }));
+    await waitFor(() => expect(click).toHaveBeenCalled());
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/export', expect.objectContaining({ method: 'POST' }));
+    click.mockRestore();
+  });
+
+  it('shows an error when the export fails', async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(protocolFixture)))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: { code: 'invalid_signature', message: 'x' } }), { status: 400 })));
+    render(<App />);
+    await user.upload(screen.getByTestId('gallery-input'), [file('a.jpg')]);
+    await user.click(screen.getByRole('button', { name: /analyze 1 photo/i }));
+    await screen.findByText('3 damages detected');
+
+    await user.click(screen.getByRole('button', { name: 'Export as PDF' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/signature could not be read/i);
   });
 });

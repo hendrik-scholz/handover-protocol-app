@@ -47,7 +47,7 @@ describe('POST /api/analyze', () => {
     expect(res.status).toBe(200);
     expect(res.body.vehicle).toMatchObject({ plate: 'AB-123', mileageKm: 42000 });
     expect(res.body.capturedSlots).toEqual(['front', 'left']);
-    expect(res.body.missingSlots).toEqual(['rear', 'right', 'interior', 'dashboard']);
+    expect(res.body.missingSlots).toEqual(['rear', 'right', 'dashboard']);
     expect(res.body.damages.map((d: { id: number }) => d.id)).toEqual([1, 2]);
     expect(res.body.summary).toEqual({ total: 2, minor: 1, moderate: 1, severe: 0 });
     expect(calls).toHaveLength(1);

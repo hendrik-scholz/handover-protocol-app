@@ -20,11 +20,6 @@ export function CarOutline({ slot }: { slot: Slot }) {
           <circle cx="218" cy="124" r="14" />
         </g>
       )}
-      {slot === 'interior' && (
-        <g {...dash}>
-          <path d="M100 120V60c0-8 6-14 14-14h20c8 0 14 6 14 14v60M186 120V60c0-8 6-14 14-14h20c8 0 14 6 14 14v60M90 120h140" />
-        </g>
-      )}
       {slot === 'dashboard' && (
         <g {...dash}>
           <path d="M40 70c40-20 200-20 240 0v30H40z" />

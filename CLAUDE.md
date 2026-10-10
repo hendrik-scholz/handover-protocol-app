@@ -4,9 +4,9 @@ This file guides Claude Code (claude.ai/code) when working in this repository.
 
 ## Project overview
 
-A mobile-first web app for creating a **vehicle handover protocol from photos**. The user captures guided photos of a vehicle (front, left, rear, right, interior, dashboard/odometer). The backend sends them to a vision-capable LLM, which returns detected damages. The user reviews the draft protocol and adds remarks and signatures.
+A mobile-first web app for creating a **vehicle handover protocol from photos**. The user captures guided photos of a vehicle (front, left, rear, right, dashboard/odometer). The backend sends them to a vision-capable LLM, which returns detected damages. The user reviews the draft protocol and adds remarks and signatures.
 
-**MVP scope:** show that uploading photos leads to a protocol. The backend is **stateless**: no database, no file storage, no PDF export, no server-side signing. The client holds all state.
+**MVP scope:** show that uploading photos leads to a protocol. The backend is **stateless**: no database, no file storage, no server-side signing. The client holds all state. `POST /api/export` renders the PDF in memory from what the client re-sends and stores nothing.
 
 Status: backend (`server/`) and frontend (`client/`) MVPs implemented. Mockups are in `mockups/`. The client has not yet been checked visually against the mockups or run against a real model.
 
@@ -25,10 +25,10 @@ client/            React app (Vite, no router; one useReducer in App)
   src/pages/       CapturePage (step 1), ProtocolPage (step 2)
   src/components/  Viewfinder, SlotChips, PhotoGrid, DamageCard, SignaturePad, ...
   src/hooks/       useCamera (getUserMedia + torch), useObjectUrl
-  src/api/         analyze.ts (FormData POST, error-code mapping)
+  src/api/         analyze.ts (FormData POST, error-code mapping), exportPdf.ts (PDF request, download)
   src/styles/      tokens.css (all colors live here), base.css, components.css
 server/
-  src/routes/      analyze.ts (POST /api/analyze)
+  src/routes/      analyze.ts (POST /api/analyze), export.ts (POST /api/export)
   src/services/    vision.ts (LLM call, prompt, parse/retry), images.ts (sharp)
   src/schemas.ts   Zod schemas and shared types
   src/middleware/  errorHandler.ts (HttpError, JSON error shape)
@@ -76,19 +76,20 @@ The backend reads configuration from environment variables (`server/.env`, never
 ## Domain model
 
 - **Vehicle:** plate number, mileage (km), handover date (the API still accepts an optional `makeModel`, but the client does not send it).
-- **Photo slot:** `front`, `left`, `rear`, `right`, `interior`, `dashboard` (odometer). A slot is captured or missing. Missing slots must be reported in the protocol ("Not covered yet: ...").
+- **Photo slot:** `front`, `left`, `rear`, `right`, `dashboard` (odometer). A slot is captured or missing. Missing slots must be reported in the protocol ("Not covered yet: ...").
 - **Damage:** type (scratch, dent, scuff marks, crack, ...), severity (`minor` | `moderate` | `severe`), location (part plus position, e.g. "Front bumper, lower left"), reference to the source photo slot, short description, optional estimated size.
 - **Protocol draft** (returned by the API): vehicle, captured/missing slots, damages (ids assigned by the server), severity summary. Remarks and signatures exist only on the client in the MVP.
 
 ## API
 
 - `GET /api/health`
-- `POST /api/analyze`: multipart/form-data. File fields: `front`, `left`, `rear`, `right`, `interior`, `dashboard` (at least one). Optional text fields: `plate`, `makeModel`, `mileageKm`. Returns the protocol draft JSON. Errors use `{error:{code,message}}`: 400 invalid input, 413 too large, 422 unusable model output, 502/504 upstream failure.
+- `POST /api/analyze`: multipart/form-data. File fields: `front`, `left`, `rear`, `right`, `dashboard` (at least one). Optional text fields: `plate`, `makeModel`, `mileageKm`. Returns the protocol draft JSON. Errors use `{error:{code,message}}`: 400 invalid input, 413 too large, 422 unusable model output, 502/504 upstream failure.
+- `POST /api/export`: multipart/form-data. File fields: the five slot names (at least one) plus optional `signatureHanded` and `signatureReceived` (PNG, light ink on transparent; the server turns the alpha channel into dark ink). Text fields: `plate`, `mileageKm`, `makeModel`, `date` (`YYYY-MM-DD`), `remarks`, and `damages` (JSON array of the reviewed damages; ids are reassigned 1..n). Returns `application/pdf` as an attachment. The layout follows `mockups/Handover_Protocol_PDF.pdf` and lives in `server/src/services/pdf.ts` (`pdfkit`, strings in `pdfCopy.ts`). Same error shape as analyze, plus `invalid_signature`.
 
 ## UI flow (see `mockups/`)
 
 1. **Capture photos** (`1_Capture_photos.pdf`): vehicle header with photo count, camera viewfinder with a dashed outline for the current slot and a positioning hint, slot chips (checked when captured), gallery upload button, shutter, flash toggle, and an "Analyze N photos" CTA. Analysis is allowed with a partial set of photos.
-2. **Protocol result** (`2_Protocol_result.pdf`; the mockup is light, but the app uses the dark-blue theme of step 1 on both screens, with colors re-mapped in `tokens.css`): vehicle summary, damage summary banner (counts by severity plus unchecked slots), photo grid with numbered damage markers, "Add <slot>" tiles for missing slots, damage cards, a coverage notice, remarks, two signature pads, "Confirm and sign" and "Export as PDF". Footer disclaimer: damages are suggestions and must be reviewed before signing. In the MVP there is no PDF export (button omitted); signature pads are client-only canvases and "Confirm and sign" just locks the screen locally. The plate is an editable field and there is no make/model field. The API returns no damage coordinates, so photo badges sit at a fixed spot per tile.
+2. **Protocol result** (`2_Protocol_result.pdf`; the mockup is light, but the app uses the dark-blue theme of step 1 on both screens, with colors re-mapped in `tokens.css`): vehicle summary, damage summary banner (counts by severity plus unchecked slots), photo grid with numbered damage markers, "Add <slot>" tiles for missing slots, damage cards, a coverage notice, remarks, two signature pads, "Confirm and sign" and "Export as PDF". Footer disclaimer: damages are suggestions and must be reviewed before signing. "Export as PDF" re-sends photos, the reviewed damages, remarks and signatures to `/api/export` and downloads the result (it works before and after signing). Signature pads are client-only canvases and "Confirm and sign" just locks the screen locally. The plate is an editable field and there is no make/model field. The API returns no damage coordinates, so photo badges sit at a fixed spot per tile.
 
 Use the camera through `<input type="file" accept="image/*" capture="environment">` or `getUserMedia`. Fall back to gallery upload.
 
@@ -99,7 +100,7 @@ Use the camera through `<input type="file" accept="image/*" capture="environment
 - Downscale and re-encode images on the server (e.g. `sharp`, about 1568 px on the long side, JPEG) before sending, to control token cost and latency. Strip EXIF.
 - Request structured JSON output (`response_format` with a JSON schema where the provider supports it). **Always validate the response with Zod**, since not every OpenAI-compatible provider enforces schemas. On a parse failure, retry once, then return a clear error.
 - The prompt must make the model only report damages it can see, reference the photo slot, and not invent damage on slots that weren't provided.
-- The same call also reads the odometer (`odometerValue` + `odometerUnit`) from the dashboard/interior photo. The server converts miles to km, ignores readings without a unit, and prefers the photo reading over a typed mileage (`vehicle.mileageSource` = `photo` | `user` | null). The client prefills the mileage field and asks the user to verify it.
+- The same call also reads the odometer (`odometerValue` + `odometerUnit`) from the dashboard photo. The server converts miles to km, ignores readings without a unit, and prefers the photo reading over a typed mileage (`vehicle.mileageSource` = `photo` | `user` | null). The client prefills the mileage field and asks the user to verify it.
 - The call also returns `plateText` read from a front/rear photo. The server normalizes it; a plate typed by the user always wins (`vehicle.plateSource`), the photo only fills an empty field.
 - Set timeouts and handle rate-limit/5xx errors with a retry and backoff.
 - Don't log image data or API keys.
@@ -108,7 +109,7 @@ Use the camera through `<input type="file" accept="image/*" capture="environment
 
 - TypeScript strict mode on both sides.
 - Validate every request body and upload on the backend (Zod, file type and size checks via `multer`). Never persist photos.
-- The LLM result is a **draft**. Damages should be editable on the client before signing (post-MVP).
+- The LLM result is a **draft**. Damages can be removed on the client (two-step confirm, locked after signing); the remaining damages are renumbered 1..n so photo badges and list match. Further editing is post-MVP.
 - Damage numbering on photos and in the list must match.
 - Keep UI text in one place so it can be localized later.
 - Tests: unit-test the vision response parsing and the protocol logic with a mocked LLM client. Never call the real API in tests.

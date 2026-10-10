@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const SLOTS = ['front', 'left', 'rear', 'right', 'interior', 'dashboard'] as const;
+export const SLOTS = ['front', 'left', 'rear', 'right', 'dashboard'] as const;
 export const SlotSchema = z.enum(SLOTS);
 export type Slot = z.infer<typeof SlotSchema>;
 
@@ -57,3 +57,34 @@ export const VehicleFieldsSchema = z.object({
     .transform((v) => (v ? Number(v) : null))
     .pipe(z.number().int().nonnegative().nullable()),
 });
+
+/** Damage as the client re-sends it for export; ids are reassigned by the server. */
+export const ExportDamageSchema = z.object({
+  type: z.string().trim().min(1).max(100),
+  severity: SeveritySchema,
+  location: z.string().trim().min(1).max(200),
+  slot: SlotSchema,
+  description: z.string().trim().min(1).max(1000),
+});
+
+export const ExportFieldsSchema = VehicleFieldsSchema.extend({
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  remarks: z.string().max(2000).default(''),
+  /** JSON-encoded array, because multipart text fields are flat strings. */
+  damages: z
+    .string()
+    .default('[]')
+    .transform((raw, ctx) => {
+      try {
+        return JSON.parse(raw) as unknown;
+      } catch {
+        ctx.issues.push({ code: 'custom', message: 'must be valid JSON', input: raw });
+        return z.NEVER;
+      }
+    })
+    .pipe(z.array(ExportDamageSchema).max(50)),
+});
+export type ExportFields = z.infer<typeof ExportFieldsSchema>;
